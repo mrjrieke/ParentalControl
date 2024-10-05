@@ -49,7 +49,7 @@ USERS_AND_TIMES_FILE=/home/$ADMIN/users_and_times.cfg
 #VICTIMS=`users`        # Issue: if user launches multiple terminals, he appears multiple times... (ssh in, …)
 #VICTIMS=`ps -aux | grep xinitrc | grep -v 'grep\|root\|$ADMIN' | cut -f 1 -d ' '` # By extracting user with X session
 #VICTIMS=`ps -aux | grep wm | grep -v "grep\|root\|$ADMIN" | cut -f 1 -d ' '` # By extracting users who started a Window Manager
-VICTIMS=`ps -axo user:32,args | grep /sbin/upstart | grep -v "grep\|root\|$ADMIN" | cut -f 1 -d ' '` # By extracting users who started a grafical session (users logged on with 'ssh -X' will NOT be detected)
+VICTIMS=`ps -axo user:32,args | grep /lib/systemd | grep -v "grep\|root\|$ADMIN" | cut -f 1 -d ' '` # By extracting users who started a grafical session (users logged on with 'ssh -X' will NOT be detected)
 
 echo List of victims: $VICTIMS
 
@@ -58,7 +58,7 @@ for VICTIM in $VICTIMS; do
 	# Shortcuts to configuration files.
 	ROLLOVER_DATE_FILE=/root/$VICTIM-rollover-date.cfg
 	TIME_LEFT_FILE=/root/$VICTIM-time-left.cfg
-	TIME_LEFT_FILE_FOR_USER=/tmp/$VICTIM-time-left.cfg
+	TIME_LEFT_FILE_FOR_USER=/root/$VICTIM-time-left.cfg
 
 	# STEP ONE
 	# The entire script relies on the fact that a user must be logged in.
@@ -117,7 +117,8 @@ for VICTIM in $VICTIMS; do
 	# STEP SIX
 	# Remind the VICTIM that he/she has $TIME_LEFT minute(s) left for the day.
 
-	UPSTART_PID=`ps -axo pid,user:32,args | grep /sbin/upstart | grep $VICTIM | grep -v grep | awk '{print $1}'`
+	#UPSTART_PID=`ps -axo pid,user:32,args | grep /sbin/upstart | grep $VICTIM | grep -v grep | awk '{print $1}'`
+	UPSTART_PID=`ps -aux | grep $VICTIM | grep -v grep | tr -s ' ' | grep gdm-wayland-session | cut -f 2 -d ' '`
 	#Trying to get the DISPLAY from the arguments of the Window Manager:
 	DISP=`ps -aux | grep wm | grep ^$VICTIM | grep -v grep | tr -s ' ' | cut -f 13 -d ' '`
 	#if the upper line did not work, try an alternative method:
@@ -127,7 +128,8 @@ for VICTIM in $VICTIMS; do
 	fi
 
 	# Display a warning message on the victim's screen:
-	sudo -u $VICTIM DISPLAY=$DISP notify-send -t 10000 -i gtk-info "Reminder:" "You have $TIME_LEFT minutes left for the day." &
+	su $VICTIM -c 'notify-send "Reminder: You have '$TIME_LEFT' minutes left for the day."' &
+	# sudo -u $VICTIM DISPLAY=$DISP notify-send -t 10000 "Reminder:" "You have $TIME_LEFT minutes left for the day." &
 	#  "Reminder:" "You have $TIME_LEFT minutes left for the day."
 	# for French/français:
 	#  "Rappel:" "Il te reste $TIME_LEFT minutes pour aujourd hui."
@@ -143,7 +145,8 @@ for VICTIM in $VICTIMS; do
 	#sudo -u $VICTIM DISPLAY=$DISP totem /home/$ADMIN/ParentalControl_5mn_left_mono.wav &
 	if [ $TIME_LEFT -lt 6 ]
 	then
-		espeak -v english "Remaining $TIME_LEFT minutes left."
+		#espeak -v english "Remaining $TIME_LEFT minutes left."
+		su $VICTIM -c 'espeak -v english "You have '$TIME_LEFT' remaining minutes before shutdown."'
 		#espeak -v french "Il reste $TIME_LEFT minutes."
 	fi
 
@@ -163,7 +166,8 @@ for VICTIM in $VICTIMS; do
 		echo "Time expired for user $VICTIM , we lock screen or logout."
 
 		# The most generic way to force-close the session:
-		sudo -u $VICTIM kill -15 $UPSTART_PID
+		#sudo -u $VICTIM kill -15 $UPSTART_PID
+		su $VICTIM -c `kill -15 $UPSTART_PID`
 
 		# Killing the session:
 		# Works with Xfce4, replace 'xfce4-session' with approppriate one to adapt for the others:
