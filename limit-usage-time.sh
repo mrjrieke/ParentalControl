@@ -146,7 +146,13 @@ for VICTIM in $VICTIMS; do
 	if [ $TIME_LEFT -lt 6 ]
 	then
 		#espeak -v english "Remaining $TIME_LEFT minutes left."
-		su $VICTIM -c 'espeak -v english "You have '$TIME_LEFT' remaining minutes before shutdown."'
+		if [ $TIME_LEFT -eq 1 ]; then
+			su $VICTIM -c 'espeak -v english "Elf, needs food, badly.  '$TIME_LEFT' minute."'
+		elif [ $TIME_LEFT -eq 0 ]; then
+			su $VICTIM -c 'espeak -v english "Elf, is about to die."'
+		else
+			su $VICTIM -c 'espeak -v english "Elf, your life force is running out.  '$TIME_LEFT' minutes."'
+		fi
 		#espeak -v french "Il reste $TIME_LEFT minutes."
 	fi
 
